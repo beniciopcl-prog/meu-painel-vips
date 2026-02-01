@@ -4,21 +4,25 @@ from datetime import datetime
 import json
 import os
 
-app = Flask(__name__)
+# Configura o Flask para procurar a pasta templates na mesma pasta deste arquivo
+app = Flask(__name__, template_folder='templates')
 CORS(app)
 
-DB_FILE = 'database.txt'
 COMPROVANTES_FILE = 'comprovantes.json'
 
 def carregar_pedidos():
-    if os.path.exists(COMPROVANTES_FILE):
-        with open(COMPROVANTES_FILE, 'r') as f:
-            return json.load(f)
+    # Verifica se o arquivo existe e não está vazio
+    if os.path.exists(COMPROVANTES_FILE) and os.path.getsize(COMPROVANTES_FILE) > 0:
+        try:
+            with open(COMPROVANTES_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {} # Se der erro na leitura, retorna vazio
     return {}
 
 def salvar_pedidos(pedidos):
     with open(COMPROVANTES_FILE, 'w') as f:
-        json.dump(pedidos, f)
+        json.dump(pedidos, f, indent=4)
 
 @app.route('/solicitar-liberacao', methods=['POST'])
 def solicitar():
@@ -28,10 +32,10 @@ def solicitar():
     
     pedidos[ip] = {
         "status": "pendente",
-        "dispositivo": request.user_agent.platform,
+        "dispositivo": request.user_agent.platform if request.user_agent.platform else "Desconhecido",
         "hora": datetime.now().strftime("%H:%M:%S"),
         "dia": datetime.now().strftime("%d/%m/%Y"),
-        "info": data.get("info_pix") # Nome ou ID da transação
+        "info": data.get("info_pix", "Sem info")
     }
     salvar_pedidos(pedidos)
     return jsonify({"success": True})
@@ -54,14 +58,14 @@ def liberar_cliente(ip_cliente):
     if ip_cliente in pedidos:
         pedidos[ip_cliente]["status"] = "liberado"
         salvar_pedidos(pedidos)
-        return "Cliente Liberado!"
-    return "Erro", 404
+        return "Cliente Liberado! Pode avisar para atualizar a pagina."
+    return "IP do cliente nao encontrado.", 404
 
-# Sua rota antiga de extração continua aqui abaixo...
 @app.route('/get-account')
 def get_account():
-    # ... (mantenha seu código de extração aqui)
     return jsonify({"status": "estoque_vazio"}) 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    # Porta padrão para testes locais, a Render usa o gunicorn
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
