@@ -1,42 +1,62 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-br">
 <head>
-    <title>Painel de Aprovação</title>
+    <meta charset="UTF-8">
+    <title>Painel de Aprovação | Admin</title>
     <style>
-        body { font-family: sans-serif; background: #1a1a1a; color: white; padding: 20px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #333; padding: 10px; text-align: left; }
-        th { background: #8b5cf6; }
-        .btn { background: #22c55e; color: white; padding: 5px 10px; text-decoration: none; border-radius: 4px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; padding: 40px; }
+        h2 { color: #8b5cf6; text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px solid #334155; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #1e293b; border-radius: 8px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #334155; }
+        th { background: #8b5cf6; color: white; font-weight: bold; text-transform: uppercase; font-size: 12px; }
+        tr:hover { background: #334155; }
+        .btn { background: #22c55e; color: white; padding: 8px 16px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 12px; transition: all 0.2s; display: inline-block; }
+        .btn:hover { background: #16a34a; transform: scale(1.05); }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .pendente { background: #f59e0b; color: #000; }
+        .liberado { background: #22c55e; color: #fff; }
+        .token-text { font-family: monospace; color: #94a3b8; font-size: 12px; }
     </style>
 </head>
 <body>
-    <h2>Pedidos de Liberação</h2>
+    <h2>🚀 Pedidos de Liberação</h2>
     <table>
-        <tr>
-            <th>IP</th>
-            <th>Data/Hora</th>
-            <th>Info PIX</th>
-            <th>Dispositivo</th>
-            <th>Status</th>
-            <th>Ação</th>
-        </tr>
-        {% for ip, dados in pedidos.items() %}
-        <tr>
-            <td>{{ ip }}</td>
-            <td>{{ dados.dia }} {{ dados.hora }}</td>
-            <td>{{ dados.info }}</td>
-            <td>{{ dados.dispositivo }}</td>
-            <td>{{ dados.status }}</td>
-            <td>
-                {% if dados.status == 'pendente' %}
-                <a href="/admin/liberar/{{ ip }}" class="btn">LIBERAR AGORA</a>
-                {% else %}
-                ✅ Liberado
-                {% endif %}
-            </td>
-        </tr>
-        {% endfor %}
+        <thead>
+            <tr>
+                <th>TOKEN DO CLIENTE</th>
+                <th>DATA / HORA</th>
+                <th>NOME/INFO PIX</th>
+                <th>DISPOSITIVO</th>
+                <th>STATUS</th>
+                <th>AÇÃO</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for token, dados in pedidos.items() %}
+            <tr>
+                <td class="token-text">{{ token }}</td>
+                <td>{{ dados.dia }} <br> <small style="color: #64748b;">{{ dados.hora }}</small></td>
+                <td style="font-weight: bold; color: #e2e8f0;">{{ dados.info }}</td>
+                <td>{{ dados.dispositivo }}</td>
+                <td>
+                    <span class="status-badge {{ 'pendente' if dados.status == 'pendente' else 'liberado' }}">
+                        {{ dados.status.upper() }}
+                    </span>
+                </td>
+                <td>
+                    {% if dados.status == 'pendente' %}
+                    <a href="/admin/liberar/{{ token }}" class="btn">LIBERAR ACESSO</a>
+                    {% else %}
+                    <span style="color: #22c55e;">✅ CONCLUÍDO</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
     </table>
+
+    <div style="margin-top: 30px; color: #64748b; font-size: 12px;">
+        Dica: Atualize a página para ver novos pedidos. O IP do cliente foi ocultado para facilitar a gestão por Token.
+    </div>
 </body>
 </html>

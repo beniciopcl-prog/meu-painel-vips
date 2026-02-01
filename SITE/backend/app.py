@@ -4,59 +4,51 @@ from datetime import datetime
 import json
 import os
 
-# Configura o Flask com a pasta de templates correta
 app = Flask(__name__, template_folder='templates')
 CORS(app)
 
 COMPROVANTES_FILE = 'comprovantes.json'
 
 def carregar_pedidos():
-    """Lê os pedidos do arquivo JSON com tratamento de erro para arquivos vazios."""
     if not os.path.exists(COMPROVANTES_FILE):
         return {}
-    
     try:
         with open(COMPROVANTES_FILE, 'r', encoding='utf-8') as f:
             conteudo = f.read().strip()
-            if not conteudo:  # Se o arquivo estiver totalmente vazio
-                return {}
-            return json.loads(conteudo)
-    except (json.JSONDecodeError, Exception) as e:
-        print(f"Erro ao carregar banco de dados: {e}")
+            return json.loads(conteudo) if conteudo else {}
+    except:
         return {}
 
 def salvar_pedidos(pedidos):
-    """Salva os pedidos no arquivo JSON."""
-    try:
-        with open(COMPROVANTES_FILE, 'w', encoding='utf-8') as f:
-            json.dump(pedidos, f, indent=4, ensure_ascii=False)
-    except Exception as e:
-        print(f"Erro ao salvar: {e}")
+    with open(COMPROVANTES_FILE, 'w', encoding='utf-8') as f:
+        json.dump(pedidos, f, indent=4, ensure_ascii=False)
 
 @app.route('/solicitar-liberacao', methods=['POST'])
 def solicitar():
     data = request.json
-    if not data:
-        return jsonify({"error": "Dados invalidos"}), 400
+    token = data.get("token")
+    if not token:
+        return jsonify({"error": "Token ausente"}), 400
         
     pedidos = carregar_pedidos()
-    ip = request.remote_addr
     
-    pedidos[ip] = {
+    # Cada token é uma entrada única no banco de dados
+    pedidos[token] = {
         "status": "pendente",
         "dispositivo": request.user_agent.platform if request.user_agent.platform else "Desconhecido",
         "hora": datetime.now().strftime("%H:%M:%S"),
         "dia": datetime.now().strftime("%d/%m/%Y"),
-        "info": data.get("info_pix", "Sem identificação")
+        "info": data.get("info_pix", "Sem identificação"),
+        "ip": request.remote_addr
     }
     salvar_pedidos(pedidos)
     return jsonify({"success": True})
 
 @app.route('/checar-status')
 def checar():
+    token = request.args.get("token")
     pedidos = carregar_pedidos()
-    ip = request.remote_addr
-    status = pedidos.get(ip, {}).get("status", "inexistente")
+    status = pedidos.get(token, {}).get("status", "inexistente")
     return jsonify({"status": status})
 
 @app.route('/admin/painel-secreto')
@@ -64,18 +56,17 @@ def admin_painel():
     pedidos = carregar_pedidos()
     return render_template('admin_painel.html', pedidos=pedidos)
 
-@app.route('/admin/liberar/<ip_cliente>')
-def liberar_cliente(ip_cliente):
+@app.route('/admin/liberar/<token_cliente>')
+def liberar_cliente(token_cliente):
     pedidos = carregar_pedidos()
-    if ip_cliente in pedidos:
-        pedidos[ip_cliente]["status"] = "liberado"
+    if token_cliente in pedidos:
+        pedidos[token_cliente]["status"] = "liberado"
         salvar_pedidos(pedidos)
-        return "Cliente Liberado com Sucesso!"
-    return "IP nao encontrado.", 404
+        return f"Cliente {token_cliente} Liberado!"
+    return "Token nao encontrado.", 404
 
 @app.route('/get-account')
 def get_account():
-    # Mantendo sua rota de entrega de contas
     return jsonify({"status": "estoque_vazio"}) 
 
 if __name__ == '__main__':
