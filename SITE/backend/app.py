@@ -8,6 +8,8 @@ app = Flask(__name__, template_folder='templates')
 CORS(app)
 
 COMPROVANTES_FILE = 'comprovantes.json'
+DATABASE_FILE = 'database.txt'
+ENTREGUES_FILE = 'entregues.txt'
 
 def carregar_pedidos():
     if not os.path.exists(COMPROVANTES_FILE):
@@ -32,7 +34,6 @@ def solicitar():
         
     pedidos = carregar_pedidos()
     
-    # Cada token é uma entrada única no banco de dados
     pedidos[token] = {
         "status": "pendente",
         "dispositivo": request.user_agent.platform if request.user_agent.platform else "Desconhecido",
@@ -67,7 +68,43 @@ def liberar_cliente(token_cliente):
 
 @app.route('/get-account')
 def get_account():
-    return jsonify({"status": "estoque_vazio"}) 
+    token = request.args.get("token")
+    pedidos = carregar_pedidos()
+    
+    # 1. Verifica se o token existe e está liberado
+    if not token or pedidos.get(token, {}).get("status") != "liberado":
+        return jsonify({"status": "ERRO", "message": "ACESSO NEGADO: PAGAMENTO NÃO LIBERADO"}), 403
+
+    # 2. Tenta extrair a conta do database.txt
+    try:
+        if os.path.exists(DATABASE_FILE):
+            with open(DATABASE_FILE, 'r', encoding='utf-8') as f:
+                linhas = f.readlines()
+            
+            if not linhas or len(linhas) == 0:
+                return jsonify({"status": "ERRO", "message": "ESTOQUE VAZIO"}), 404
+            
+            # Pega a primeira conta (topo da lista)
+            conta_extraida = linhas[0].strip()
+            restante = linhas[1:]
+            
+            # Atualiza o database removendo a conta que será entregue
+            with open(DATABASE_FILE, 'w', encoding='utf-8') as f:
+                f.writelines(restante)
+                
+            # Salva no log de entregues para seu controle
+            with open(ENTREGUES_FILE, 'a', encoding='utf-8') as e:
+                data_hora = datetime.now().strftime('%d/%m/%Y %H:%M')
+                e.write(f"{data_hora} | Conta: {conta_extraida} | Token: {token}\n")
+                
+            # Retorna com o status que o seu gerador.html espera (SUCCESS)
+            return jsonify({"status": "SUCCESS", "full": conta_extraida})
+            
+    except Exception as e:
+        print(f"Erro no processamento da conta: {e}")
+        return jsonify({"status": "ERRO", "message": "ERRO NO SERVIDOR"}), 500
+        
+    return jsonify({"status": "ERRO", "message": "ESTOQUE INDISPONÍVEL"}), 404
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
