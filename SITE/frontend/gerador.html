@@ -20,19 +20,19 @@
     <div class="max-w-4xl w-full">
         <div class="terminal-bg p-8 rounded-xl neon-border relative">
             <div class="flex justify-between items-center mb-10 border-b border-purple-900 pb-4">
-                <div class="text-xs uppercase tracking-widest">Status: <span class="text-green-500 animate-pulse">Servidor Ativo</span></div>
+                <div class="text-xs uppercase tracking-widest">Status: <span class="text-green-500 animate-pulse">Servidor Online</span></div>
                 <div class="text-xs">User: VIP_MEMBER</div>
             </div>
 
             <div id="console-display" class="bg-black/50 p-10 rounded-lg border border-purple-500/20 text-center min-h-[200px] flex flex-col justify-center">
-                <h2 id="main-message" class="text-xl md:text-2xl font-bold mb-4 tracking-tighter">SISTEMA PRONTO: AGUARDANDO COMANDO</h2>
+                <h2 id="main-message" class="text-xl md:text-2xl font-bold mb-4 tracking-tighter uppercase">Aguardando Comando de Extração</h2>
                 
                 <div id="loader" class="hidden w-full max-w-sm mx-auto bg-gray-900 h-1.5 rounded-full overflow-hidden">
                     <div id="bar" class="bg-purple-500 h-full w-0 transition-all duration-200"></div>
                 </div>
 
                 <div id="result-container" class="hidden mt-4">
-                    <div class="text-[10px] text-purple-400 mb-2 uppercase tracking-[0.2em]">Credencial Extraída:</div>
+                    <div class="text-[10px] text-purple-400 mb-2 uppercase tracking-[0.2em]">Credencial Extraída com Sucesso:</div>
                     <div id="account-reveal" class="text-2xl md:text-3xl font-black text-white tracking-widest break-all"></div>
                 </div>
             </div>
@@ -45,7 +45,7 @@
         </div>
 
         <p class="text-[10px] text-center mt-6 text-purple-900 uppercase tracking-widest">
-            Acesso Restrito - GamePanel Pro v1.0.26
+            Conexão Criptografada via Render Cloud v1.0.26
         </p>
     </div>
 
@@ -63,19 +63,26 @@
             btn.style.opacity = '0.5';
             resultCont.classList.add('hidden');
             loader.classList.remove('hidden');
-            msg.innerText = "INICIANDO EXPLOIT...";
+            msg.innerText = "INICIANDO BYPASS...";
+            msg.classList.remove('text-red-500', 'text-green-500');
 
-            // Simulação de Progresso
+            // Simulação de Progresso Visual
             let width = 0;
             const progressInterval = setInterval(() => {
-                width += Math.random() * 10;
+                width += Math.random() * 15;
                 if (width > 100) width = 100;
                 bar.style.width = width + "%";
-            }, 150);
+            }, 200);
 
             try {
-                // Chamada Real ao seu Servidor Python (app.py)
-                const response = await fetch('http://localhost:5000/get-account');
+                // ALTERAÇÃO REALIZADA AQUI: Adicionado /get-account no final da URL
+                const response = await fetch('https://meu-painel-vips.onrender.com/get-account');
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || "Erro no servidor");
+                }
+
                 const data = await response.json();
 
                 clearInterval(progressInterval);
@@ -83,25 +90,24 @@
 
                 if (data.status === "SUCCESS") {
                     setTimeout(() => {
-                        msg.innerText = "BYPASS CONCLUÍDO!";
+                        msg.innerText = "SISTEMA INVASIVO CONCLUÍDO!";
                         msg.classList.add('text-green-500');
                         loader.classList.add('hidden');
                         resultCont.classList.remove('hidden');
                         
-                        // Efeito de Descriptografia
+                        // Efeito Hacker de Descriptografia
                         animarTexto(data.full, reveal);
                         
                         btn.disabled = false;
                         btn.style.opacity = '1';
                     }, 1000);
-                } else {
-                    throw new Error(data.message);
                 }
 
             } catch (err) {
                 clearInterval(progressInterval);
-                msg.innerText = "ERRO: " + err.message;
+                msg.innerText = "FALHA: " + err.message;
                 msg.classList.add('text-red-500');
+                loader.classList.add('hidden');
                 btn.disabled = false;
                 btn.style.opacity = '1';
             }
