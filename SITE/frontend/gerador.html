@@ -13,7 +13,6 @@
         @keyframes scan { from { top: 0; } to { top: 100%; } }
         .scanline { width: 100%; height: 2px; background: rgba(168, 85, 247, 0.1); position: absolute; animation: scan 4s linear infinite; pointer-events: none; }
         
-        /* Botão do WhatsApp Flutuante */
         .btn-whatsapp {
             position: fixed;
             bottom: 20px;
@@ -73,7 +72,7 @@
         </div>
 
         <p class="text-[10px] text-center mt-6 text-purple-900 uppercase tracking-widest">
-            Conexão Criptografada via Render Cloud v1.0.26 | <span class="text-gray-500 italic">Dica: Clique no ícone verde para entrar no canal VIP</span>
+            Conexão Criptografada via Render Cloud v1.0.26 | <span class="text-gray-500 italic">Dica: Se houver erro, verifique sua liberação.</span>
         </p>
     </div>
 
@@ -85,44 +84,50 @@
             const bar = document.getElementById('bar');
             const resultCont = document.getElementById('result-container');
             const reveal = document.getElementById('account-reveal');
+            
+            // Pega o token gerado no pagamento.html
+            const meuToken = localStorage.getItem('user_token');
+
+            if(!meuToken) {
+                msg.innerText = "FALHA: TOKEN NÃO ENCONTRADO";
+                msg.classList.add('text-red-500');
+                return;
+            }
 
             btn.disabled = true;
             btn.style.opacity = '0.5';
             resultCont.classList.add('hidden');
             loader.classList.remove('hidden');
-            msg.innerText = "INICIANDO BYPASS...";
+            msg.innerText = "INICIANDO BYPASS NO SERVIDOR...";
             msg.classList.remove('text-red-500', 'text-green-500');
 
             let width = 0;
             const progressInterval = setInterval(() => {
-                width += Math.random() * 15;
-                if (width > 100) width = 100;
+                width += Math.random() * 12;
+                if (width > 98) width = 98;
                 bar.style.width = width + "%";
-            }, 200);
+            }, 250);
 
             try {
-                // Link oficial do seu Render
-                const response = await fetch('https://meu-painel-vips.onrender.com/get-account');
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.message || "Erro no servidor");
-                }
-
+                // Envia o token para a Render validar
+                const response = await fetch(`https://meu-painel-vips.onrender.com/get-account?token=${meuToken}`);
                 const data = await response.json();
+                
                 clearInterval(progressInterval);
                 bar.style.width = "100%";
 
                 if (data.status === "SUCCESS") {
                     setTimeout(() => {
-                        msg.innerText = "SISTEMA INVASIVO CONCLUÍDO!";
+                        msg.innerText = "BYPASS CONCLUÍDO COM SUCESSO!";
                         msg.classList.add('text-green-500');
                         loader.classList.add('hidden');
                         resultCont.classList.remove('hidden');
                         animarTexto(data.full, reveal);
                         btn.disabled = false;
                         btn.style.opacity = '1';
-                    }, 1000);
+                    }, 800);
+                } else {
+                    throw new Error(data.message || "ERRO NA VALIDAÇÃO");
                 }
 
             } catch (err) {
