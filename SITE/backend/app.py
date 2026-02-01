@@ -10,8 +10,6 @@ CORS(app)
 COMPROVANTES_FILE = 'comprovantes.json'
 DATABASE_FILE = 'database.txt'
 ENTREGUES_FILE = 'entregues.txt'
-# NOVO: Arquivo para persistir liberações mesmo após reset da Render
-LIBERADOS_PERMANENTE = 'liberados_lista.txt'
 
 def carregar_pedidos():
     if not os.path.exists(COMPROVANTES_FILE):
@@ -19,18 +17,7 @@ def carregar_pedidos():
     try:
         with open(COMPROVANTES_FILE, 'r', encoding='utf-8') as f:
             conteudo = f.read().strip()
-            pedidos = json.loads(conteudo) if conteudo else {}
-            
-            # Recupera liberações do backup caso o JSON tenha resetado
-            if os.path.exists(LIBERADOS_PERMANENTE):
-                with open(LIBERADOS_PERMANENTE, 'r') as lb:
-                    tokens_salvos = [line.strip() for line in lb.readlines()]
-                    for t in tokens_salvos:
-                        if t not in pedidos:
-                            pedidos[t] = {"status": "liberado", "info": "Recuperado do Backup"}
-                        else:
-                            pedidos[t]["status"] = "liberado"
-            return pedidos
+            return json.loads(conteudo) if conteudo else {}
     except:
         return {}
 
@@ -55,6 +42,7 @@ def solicitar():
     token = data.get("token")
     if not token:
         return jsonify({"error": "Token ausente"}), 400
+    
     pedidos = carregar_pedidos()
     pedidos[token] = {
         "status": "pendente",
@@ -114,12 +102,7 @@ def liberar_cliente(token_cliente):
     if token_cliente in pedidos:
         pedidos[token_cliente]["status"] = "liberado"
         salvar_pedidos(pedidos)
-        
-        # Backup físico da liberação
-        with open(LIBERADOS_PERMANENTE, 'a') as f:
-            f.write(f"{token_cliente}\n")
-            
-        return f"Cliente {token_cliente} Liberado e Backup Criado!"
+        return f"Cliente {token_cliente} Liberado!"
     return "Token nao encontrado.", 404
 
 @app.route('/get-account')
@@ -127,6 +110,7 @@ def get_account():
     token = request.args.get("token")
     pedidos = carregar_pedidos()
     
+    # Se o token sumiu do painel (reset), ele barra o acesso aqui
     if not token or pedidos.get(token, {}).get("status") != "liberado":
         return jsonify({"status": "ERRO", "message": "ACESSO NEGADO: PAGAMENTO NÃO LIBERADO"}), 403
 
@@ -140,6 +124,7 @@ def get_account():
             conta_extraida = linhas[0].strip()
             restante = linhas[1:]
             
+            # Atualiza o estoque removendo a conta entregue
             with open(DATABASE_FILE, 'w', encoding='utf-8') as f:
                 f.writelines(restante)
                 
