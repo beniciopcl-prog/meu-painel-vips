@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Processando Pagamento | GamePanel Pro</title>
+    <title>Aguardando Aprovação | GamePanel Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap" rel="stylesheet">
     <style>
@@ -17,47 +17,91 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .input-hacker { background: rgba(0,0,0,0.6); border: 1px solid #a855f7; color: #fff; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center p-6 text-center">
 
-    <div class="max-w-md w-full bg-black/40 p-10 rounded-2xl border border-purple-500/30 backdrop-blur-md">
+    <div class="max-w-md w-full bg-black/40 p-10 rounded-2xl border border-purple-500/30 backdrop-blur-md shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+        
         <div id="status-icon" class="flex justify-center mb-6">
             <div class="loader"></div>
         </div>
 
-        <h1 id="status-title" class="text-xl font-bold mb-4 uppercase tracking-tighter">Verificando Transação...</h1>
+        <h1 id="status-title" class="text-xl font-bold mb-4 uppercase tracking-tighter">Validação de PIX</h1>
         
-        <div id="status-box" class="text-sm text-gray-400 space-y-2 mb-8">
-            <p id="step-1" class="opacity-100">✔ Recebendo confirmação do gateway...</p>
-            <p id="step-2" class="opacity-0 transition-opacity duration-500">✔ Validando token de acesso...</p>
-            <p id="step-3" class="opacity-0 transition-opacity duration-500">✔ Liberando credenciais VIP...</p>
+        <div id="form-envio" class="space-y-4 mb-8">
+            <p class="text-xs text-gray-400">Insira o nome de quem fez o PIX ou o ID da transação para liberarmos seu acesso.</p>
+            <input type="text" id="pix-info" placeholder="Nome ou ID do PIX" class="input-hacker w-full p-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-center text-sm">
+            <button onclick="enviarParaAprovacao()" class="w-full py-4 bg-purple-600 hover:bg-purple-500 text-white font-black rounded-lg transition-all uppercase text-xs tracking-widest">
+                VERIFICAR PAGAMENTO
+            </button>
+        </div>
+
+        <div id="status-box" class="hidden text-sm text-gray-400 space-y-2 mb-8">
+            <p id="step-1" class="text-yellow-500 animate-pulse">● Aguardando aprovação do Admin...</p>
+            <p class="text-[10px] italic text-gray-500">Não feche esta página. O acesso será liberado automaticamente assim que o pagamento for confirmado no banco.</p>
         </div>
 
         <div id="action-area" class="hidden">
-            <p class="text-green-400 font-bold mb-6">PAGAMENTO CONFIRMADO!</p>
-            <a href="gerador.html" class="inline-block w-full py-4 bg-purple-600 hover:bg-purple-500 text-white font-black rounded-lg transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(139,92,246,0.5)]">
-                ACESSAR GERADOR AGORA
+            <p class="text-green-400 font-bold mb-6 text-sm uppercase">✅ ACESSO CONCEDIDO PELO SISTEMA!</p>
+            <a href="gerador.html" class="inline-block w-full py-4 bg-green-600 hover:bg-green-500 text-white font-black rounded-lg transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(34,197,94,0.4)] uppercase text-xs tracking-widest">
+                ENTRAR NO PAINEL AGORA
             </a>
         </div>
     </div>
 
     <script>
-        // Simulação de verificação de segurança (Dá tempo do banco de dados processar)
-        setTimeout(() => { document.getElementById('step-2').classList.remove('opacity-0'); }, 1500);
-        setTimeout(() => { document.getElementById('step-3').classList.remove('opacity-0'); }, 3000);
-        
-        setTimeout(() => {
+        const API_URL = "https://meu-painel-vips.onrender.com"; // VERIFIQUE SE ESTA É SUA URL DA RENDER
+
+        function enviarParaAprovacao() {
+            const info = document.getElementById('pix-info').value;
+            if(!info) { alert("Por favor, digite o nome ou ID do pagamento!"); return; }
+
+            // Envia para o servidor
+            fetch(`${API_URL}/solicitar-liberacao`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({info_pix: info})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    // Esconde o formulário e mostra o aguarde
+                    document.getElementById('form-envio').classList.add('hidden');
+                    document.getElementById('status-box').classList.remove('hidden');
+                    document.getElementById('status-title').innerText = "AGUARDANDO LIBERAÇÃO";
+                    verificarLoop(); // Começa a perguntar se o admin já liberou
+                }
+            })
+            .catch(err => alert("Erro ao conectar com o servidor. Tente novamente."));
+        }
+
+        function verificarLoop() {
+            fetch(`${API_URL}/checar-status`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === "liberado") {
+                        exibirSucesso();
+                    } else {
+                        // Pergunta novamente a cada 5 segundos
+                        setTimeout(verificarLoop, 5000);
+                    }
+                })
+                .catch(() => setTimeout(verificarLoop, 5000));
+        }
+
+        function exibirSucesso() {
             document.getElementById('status-icon').innerHTML = `
                 <svg class="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
                 </svg>
             `;
             document.getElementById('status-title').innerText = "ACESSO LIBERADO";
-            document.getElementById('status-title').classList.add('text-green-500');
+            document.getElementById('status-title').classList.replace('text-purple-500', 'text-green-500');
             document.getElementById('status-box').classList.add('hidden');
             document.getElementById('action-area').classList.remove('hidden');
-        }, 4500);
+        }
     </script>
 </body>
 </html>
