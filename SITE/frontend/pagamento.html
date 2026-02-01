@@ -52,39 +52,46 @@
     </div>
 
     <script>
-        const API_URL = "https://meu-painel-vips.onrender.com"; // VERIFIQUE SE ESTA É SUA URL DA RENDER
+        const API_URL = "https://meu-painel-vips.onrender.com";
+        
+        // Gera ou recupera um Token único para este cliente
+        let meuToken = localStorage.getItem('user_token');
+        if (!meuToken) {
+            meuToken = 'TK-' + Math.random().toString(36).substr(2, 9).toUpperCase();
+            localStorage.setItem('user_token', meuToken);
+        }
 
         function enviarParaAprovacao() {
             const info = document.getElementById('pix-info').value;
             if(!info) { alert("Por favor, digite o nome ou ID do pagamento!"); return; }
 
-            // Envia para o servidor
             fetch(`${API_URL}/solicitar-liberacao`, {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({info_pix: info})
+                body: JSON.stringify({
+                    info_pix: info,
+                    token: meuToken // Envia o Token em vez de depender do IP
+                })
             })
             .then(res => res.json())
             .then(data => {
                 if(data.success) {
-                    // Esconde o formulário e mostra o aguarde
                     document.getElementById('form-envio').classList.add('hidden');
                     document.getElementById('status-box').classList.remove('hidden');
                     document.getElementById('status-title').innerText = "AGUARDANDO LIBERAÇÃO";
-                    verificarLoop(); // Começa a perguntar se o admin já liberou
+                    verificarLoop();
                 }
             })
-            .catch(err => alert("Erro ao conectar com o servidor. Tente novamente."));
+            .catch(err => alert("Erro ao conectar com o servidor."));
         }
 
         function verificarLoop() {
-            fetch(`${API_URL}/checar-status`)
+            fetch(`${API_URL}/checar-status?token=${meuToken}`)
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === "liberado") {
                         exibirSucesso();
                     } else {
-                        // Pergunta novamente a cada 5 segundos
                         setTimeout(verificarLoop, 5000);
                     }
                 })
@@ -98,7 +105,6 @@
                 </svg>
             `;
             document.getElementById('status-title').innerText = "ACESSO LIBERADO";
-            document.getElementById('status-title').classList.replace('text-purple-500', 'text-green-500');
             document.getElementById('status-box').classList.add('hidden');
             document.getElementById('action-area').classList.remove('hidden');
         }
